@@ -20,12 +20,57 @@ def home():
 
 from fastapi import Request
 
+import requests
+
+def reply_line(reply_token, text):
+    headers = {
+        "Authorization": f"Bearer {os.getenv('LINE_CHANNEL_ACCESS_TOKEN')}",
+        "Content-Type": "application/json"
+    }
+
+    body = {
+        "replyToken": reply_token,
+        "messages": [
+            {
+                "type": "text",
+                "text": text
+            }
+        ]
+    }
+
+    requests.post(
+        "https://api.line.me/v2/bot/message/reply",
+        headers=headers,
+        json=body
+    )
+
+
 @app.post("/webhook")
 async def webhook(request: Request):
     body = await request.json()
-
     print("LINE webhook received")
     print(body)
+
+    event = body["events"][0]
+
+    if event["type"] != "message":
+        return {"status": "ok"}
+
+    user_text = event["message"]["text"]
+    reply_token = event["replyToken"]
+
+    result = analyze(FoodRequest(food=user_text))
+
+    reply_text = (
+        f"{result['food']}\n"
+        f"ประมาณ {result['calories']} kcal\n"
+        f"โปรตีน {result['protein']} g\n"
+        f"คาร์บ {result['carbs']} g\n"
+        f"ไขมัน {result['fat']} g\n\n"
+        f"{result['advice']}"
+    )
+
+    reply_line(reply_token, reply_text)
 
     return {"status": "ok"}
 
