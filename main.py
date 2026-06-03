@@ -18,6 +18,17 @@ class FoodRequest(BaseModel):
 def home():
     return {"message": "CoachJaiDee AI Running"}
 
+from fastapi import Request
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    body = await request.json()
+
+    print("LINE webhook received")
+    print(body)
+
+    return {"status": "ok"}
+
 @app.post("/analyze")
 def analyze(data: FoodRequest):
     response = client.chat.completions.create(
