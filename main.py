@@ -50,3 +50,13 @@ def analyze(data: FoodRequest):
     ai_json = json.loads(ai_text)
 
     return ai_json
+from fastapi import Request
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    body = await request.json()
+
+    print("LINE webhook received")
+    print(body)
+
+    return {"status": "ok"}
