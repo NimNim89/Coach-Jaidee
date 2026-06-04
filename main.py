@@ -34,11 +34,21 @@ def reply_line(reply_token, text):
         "replyToken": reply_token,
         "messages": [{"type": "text", "text": text}]
     }
+
     requests.post(
         "https://api.line.me/v2/bot/message/reply",
         headers=headers,
         json=body
     )
+
+def calculate_target_calories(weight, height, sex, age):
+    if sex == "ชาย":
+        bmr = 10 * weight + 6.25 * height - 5 * age + 5
+    else:
+        bmr = 10 * weight + 6.25 * height - 5 * age - 161
+
+    tdee = bmr * 1.2
+    return int(tdee - 300)
 
 @app.post("/webhook")
 async def webhook(request: Request):
@@ -57,6 +67,42 @@ async def webhook(request: Request):
     user_id = event["source"]["userId"]
     user_text = event["message"]["text"].strip()
     reply_token = event["replyToken"]
+
+    if user_text == "ตั้งโปรไฟล์":
+        reply_line(
+            reply_token,
+            "ส่งข้อมูลแบบนี้นะ 😊\n\nน้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ\n\nตัวอย่าง:\n65,160,หญิง,35"
+        )
+        return {"status": "ok"}
+
+    parts = user_text.split(",")
+
+    if len(parts) == 4:
+        try:
+            weight = float(parts[0].strip())
+            height = float(parts[1].strip())
+            sex = parts[2].strip()
+            age = int(parts[3].strip())
+
+            target_calories = calculate_target_calories(weight, height, sex, age)
+
+            supabase.table("user_profiles").upsert({
+                "user_id": user_id,
+                "weight": weight,
+                "height": height,
+                "sex": sex,
+                "age": age,
+                "target_calories": target_calories
+            }).execute()
+
+            reply_line(
+                reply_token,
+                f"ตั้งโปรไฟล์เรียบร้อยแล้ว 🎯\n\nเป้าหมาย {target_calories} kcal/วัน"
+            )
+            return {"status": "ok"}
+
+        except Exception as e:
+            print("PROFILE ERROR:", e)
 
     if user_text == "สรุปวันนี้":
         today_start = datetime.now(timezone.utc).replace(
