@@ -59,12 +59,12 @@ async def webhook(request: Request):
     reply_token = event["replyToken"]
 
     if user_text == "สรุปวันนี้":
-    today_start = datetime.now(timezone.utc).replace(
-        hour=0,
-        minute=0,
-        second=0,
-        microsecond=0
-     ).isoformat()
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0
+         ).isoformat()
 
 
         response = supabase.table("food_logs") \
