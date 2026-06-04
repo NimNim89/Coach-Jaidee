@@ -6,11 +6,16 @@ from datetime import date
 import os
 import json
 import requests
+from supabase import create_client
 
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 app = FastAPI()
+supabase = create_client(
+    os.getenv("SUPABASE_URL")
+    os.getenv("SUPABASE_KEY")
+)
 
 daily_logs = {}
 
@@ -71,6 +76,15 @@ async def webhook(request: Request):
         reply_line(reply_token, reply_text)
         return {"status": "ok"}
     result = analyze(FoodRequest(food=user_text))
+
+    supabase.table("food_logs").insert({
+    "user_id": user_id,
+    "food": result["food"],
+    "calories": result["calories"],
+    "protein": result["protein"],
+    "carbs": result["carbs"],
+    "fat": result["fat"]
+    }).execute()
 
     today = str(date.today())
     key = f"{user_id}_{today}"
