@@ -59,20 +59,36 @@ async def webhook(request: Request):
     user_text = event["message"]["text"]
     reply_token = event["replyToken"]
     
-    if user_text.strip() == "สรุปวันนี้":
-        today = str(date.today())
-        key = f"{user_id}_{today}"
-        total = daily_logs.get(key, 0)
-        target = 1500
-        remaining = target - total
+if user_text.strip() == "สรุปวันนี้":
+    response = supabase.table("food_logs") \
+        .select("food, calories, protein, carbs, fat") \
+        .eq("user_id", user_id) \
+        .execute()
 
-        reply_text = (
-            f"สรุปวันนี้ 🍱\n"
-            f"ทานไปแล้ว {total} kcal\n"
-            f"เหลืออีกประมาณ {remaining} kcal\n"
-            f"จากเป้าหมาย {target} kcal"
-        )
+    logs = response.data
 
+    total = sum(item["calories"] for item in logs)
+    total_protein = sum(item["protein"] for item in logs)
+    total_carbs = sum(item["carbs"] for item in logs)
+    total_fat = sum(item["fat"] for item in logs)
+
+    target = 1500
+    remaining = target - total
+
+    food_list = "\n".join(
+        [f"- {item['food']} {item['calories']} kcal" for item in logs]
+    )
+
+    reply_text = (
+        f"สรุปวันนี้ 🍱\n"
+        f"{food_list}\n\n"
+        f"รวม {total} kcal\n"
+        f"โปรตีน {total_protein} g\n"
+        f"คาร์บ {total_carbs} g\n"
+        f"ไขมัน {total_fat} g\n\n"
+        f"เหลืออีกประมาณ {remaining} kcal\n"
+        f"จากเป้าหมาย {target} kcal"
+    )
         reply_line(reply_token, reply_text)
         return {"status": "ok"}
     result = analyze(FoodRequest(food=user_text))
