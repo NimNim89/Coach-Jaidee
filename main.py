@@ -53,7 +53,23 @@ async def webhook(request: Request):
     user_id = event["source"]["userId"]
     user_text = event["message"]["text"]
     reply_token = event["replyToken"]
+    
+    if user_text.strip() == "สรุปวันนี้":
+        today = str(date.today())
+        key = f"{user_id}_{today}"
+        total = daily_logs.get(key, 0)
+        target = 1500
+        remaining = target - total
 
+        reply_text = (
+            f"สรุปวันนี้ 🍱\n"
+            f"ทานไปแล้ว {total} kcal\n"
+            f"เหลืออีกประมาณ {remaining} kcal\n"
+            f"จากเป้าหมาย {target} kcal"
+        )
+
+        reply_line(reply_token, reply_text)
+        return {"status": "ok"}
     result = analyze(FoodRequest(food=user_text))
 
     today = str(date.today())
