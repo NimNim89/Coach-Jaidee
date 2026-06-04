@@ -132,7 +132,13 @@ async def webhook(request: Request):
         total_carbs = sum(int(item["carbs"]) for item in logs)
         total_fat = sum(int(item["fat"]) for item in logs)
 
-        target = 1500
+        profile = supabase.table("user_profiles") \
+            .select("target_calories") \
+            .eq("user_id", user_id) \
+            .single() \
+            .execute()
+
+        target = profile.data["target_calories"]
         remaining = target - total
 
         food_list = "\n".join(
