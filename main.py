@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
+from datetime import date, datetime, timezone
 import os
 import json
 import requests
@@ -58,9 +59,18 @@ async def webhook(request: Request):
     reply_token = event["replyToken"]
 
     if user_text == "สรุปวันนี้":
+    today_start = datetime.now(timezone.utc).replace(
+        hour=0,
+        minute=0'
+        second=0'
+        microsecond=0
+     ).isoformat()
+
+
         response = supabase.table("food_logs") \
-            .select("food, calories, protein, carbs, fat") \
+            .select("food, calories, protein, carbs, fat, created_at") \
             .eq("user_id", user_id) \
+            .gte("created_at", today_start) \
             .execute()
 
         logs = response.data or []
