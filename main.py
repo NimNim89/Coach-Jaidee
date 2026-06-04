@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
-from datetime import date
 import os
 import json
 import requests
@@ -12,12 +11,11 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 app = FastAPI()
+
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_KEY")
 )
-
-daily_logs = {}
 
 class FoodRequest(BaseModel):
     food: str
@@ -56,62 +54,69 @@ async def webhook(request: Request):
         return {"status": "ok"}
 
     user_id = event["source"]["userId"]
-    user_text = event["message"]["text"]
+    user_text = event["message"]["text"].strip()
     reply_token = event["replyToken"]
-    
-if user_text.strip() == "สรุปวันนี้":
+
+    if user_text == "สรุปวันนี้":
+        response = supabase.table("food_logs") \
+            .select("food, calories, protein, carbs, fat") \
+            .eq("user_id", user_id) \
+            .execute()
+
+        logs = response.data or []
+
+        total = sum(int(item["calories"]) for item in logs)
+        total_protein = sum(int(item["protein"]) for item in logs)
+        total_carbs = sum(int(item["carbs"]) for item in logs)
+        total_fat = sum(int(item["fat"]) for item in logs)
+
+        target = 1500
+        remaining = target - total
+
+        food_list = "\n".join(
+            [f"- {item['food']} {item['calories']} kcal" for item in logs]
+        )
+
+        if not food_list:
+            food_list = "ยังไม่มีรายการอาหารวันนี้"
+
+        reply_text = (
+            f"สรุปวันนี้ 🍱\n"
+            f"{food_list}\n\n"
+            f"รวม {total} kcal\n"
+            f"โปรตีน {total_protein} g\n"
+            f"คาร์บ {total_carbs} g\n"
+            f"ไขมัน {total_fat} g\n\n"
+            f"เหลืออีกประมาณ {remaining} kcal\n"
+            f"จากเป้าหมาย {target} kcal"
+        )
+
+        reply_line(reply_token, reply_text)
+        return {"status": "ok"}
+
+    result = analyze(FoodRequest(food=user_text))
+
+    try:
+        supabase.table("food_logs").insert({
+            "user_id": user_id,
+            "food": result["food"],
+            "calories": result["calories"],
+            "protein": result["protein"],
+            "carbs": result["carbs"],
+            "fat": result["fat"]
+        }).execute()
+        print("SUPABASE SUCCESS")
+    except Exception as e:
+        print("SUPABASE ERROR:", e)
+
     response = supabase.table("food_logs") \
-        .select("food, calories, protein, carbs, fat") \
+        .select("calories") \
         .eq("user_id", user_id) \
         .execute()
 
-    logs = response.data
+    logs = response.data or []
+    total = sum(int(item["calories"]) for item in logs)
 
-    total = sum(item["calories"] for item in logs)
-    total_protein = sum(item["protein"] for item in logs)
-    total_carbs = sum(item["carbs"] for item in logs)
-    total_fat = sum(item["fat"] for item in logs)
-
-    target = 1500
-    remaining = target - total
-
-    food_list = "\n".join(
-        [f"- {item['food']} {item['calories']} kcal" for item in logs]
-    )
-
-    reply_text = (
-        f"สรุปวันนี้ 🍱\n"
-        f"{food_list}\n\n"
-        f"รวม {total} kcal\n"
-        f"โปรตีน {total_protein} g\n"
-        f"คาร์บ {total_carbs} g\n"
-        f"ไขมัน {total_fat} g\n\n"
-        f"เหลืออีกประมาณ {remaining} kcal\n"
-        f"จากเป้าหมาย {target} kcal"
-    )
-        reply_line(reply_token, reply_text)
-        return {"status": "ok"}
-    result = analyze(FoodRequest(food=user_text))
-
-try:
-    supabase.table("food_logs").insert({
-    "user_id": user_id,
-    "food": result["food"],
-    "calories": result["calories"],
-    "protein": result["protein"],
-    "carbs": result["carbs"],
-    "fat": result["fat"]
-    }).execute()
-    print ("SUPABASE SUCCESS")
-
-    except Exceotion as e:
-    print ("SUPABASE ERROR:", e)
-
-    today = str(date.today())
-    key = f"{user_id}_{today}"
-    daily_logs[key] = daily_logs.get(key, 0) + int(result["calories"])
-
-    total = daily_logs[key]
     target = 1500
     remaining = target - total
 
@@ -177,5 +182,4 @@ def analyze(data: FoodRequest):
     )
 
     ai_text = response.choices[0].message.content
-    ai_json = json.loads(ai_text)
-    return ai_json
+    return json.loads(ai_text)
