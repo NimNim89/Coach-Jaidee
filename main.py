@@ -77,6 +77,7 @@ async def webhook(request: Request):
         return {"status": "ok"}
     result = analyze(FoodRequest(food=user_text))
 
+try:
     supabase.table("food_logs").insert({
     "user_id": user_id,
     "food": result["food"],
@@ -85,6 +86,10 @@ async def webhook(request: Request):
     "carbs": result["carbs"],
     "fat": result["fat"]
     }).execute()
+    print ("SUPABASE SUCCESS")
+
+    except Exceotion as e:
+    print ("SUPABASE ERROR:", e)
 
     today = str(date.today())
     key = f"{user_id}_{today}"
