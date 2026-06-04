@@ -103,6 +103,12 @@ async def webhook(request: Request):
 
         except Exception as e:
             print("PROFILE ERROR:", e)
+            reply_line(
+                reply_token,
+                "รูปแบบข้อมูลยังไม่ถูกต้องนะ 😊\n\nลองส่งแบบนี้:\n65,160,หญิง,35"
+            )
+
+            return {"status": "ok"}
 
     if user_text == "สรุปวันนี้":
         today_start = datetime.now(timezone.utc).replace(
