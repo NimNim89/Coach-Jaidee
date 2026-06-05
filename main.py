@@ -108,7 +108,7 @@ async def webhook(request: Request):
                     "height": height,
                     "sex": sex,
                     "age": age,
-                    "activity_level":activity_level,
+                    "activity_level": activity_level,
                     "target_calories": target_calories
                 },
                 on_conflict="user_id"
@@ -121,10 +121,11 @@ async def webhook(request: Request):
             return {"status": "ok"}
 
         except Exception as e:
-            print("PROFILE ERROR:", e)
+            print("PROFILE ERROR:", repr(e))
+            
             reply_line(
                 reply_token,
-                "รูปแบบข้อมูลยังไม่ถูกต้องนะ 😊\n\nลองส่งแบบนี้:\n65,160,หญิง,35,เบา"
+                f"ERROR:\n{e}"
             )
 
             return {"status": "ok"}
