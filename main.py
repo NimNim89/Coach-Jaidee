@@ -41,14 +41,28 @@ def reply_line(reply_token, text):
         json=body
     )
 
-def calculate_target_calories(weight, height, sex, age):
+def calculate_target_calories(weight, height, sex, age, activity_level):
     if sex == "ชาย":
         bmr = 10 * weight + 6.25 * height - 5 * age + 5
     else:
         bmr = 10 * weight + 6.25 * height - 5 * age - 161
 
-    tdee = bmr * 1.2
-    return int(tdee - 300)
+    activity_map = {
+         "เบา": 1.2,
+        "กลาง": 1.375,
+        "หนัก": 1.55,
+        "มาก": 1.725
+    }
+
+    tdee = bmr * activity_map.get(activity_level, 1.2)
+    target = int(tdee - 300)
+
+    if sex == "ชาย" and target < 1500:
+        target = 1500
+    elif sex != "ชาย" and target < 1200:
+        target = 1200
+    
+    return target
 
 @app.post("/webhook")
 async def webhook(request: Request):
@@ -71,20 +85,21 @@ async def webhook(request: Request):
     if user_text == "ตั้งโปรไฟล์":
         reply_line(
             reply_token,
-            "ส่งข้อมูลแบบนี้นะ 😊\n\nน้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ\n\nตัวอย่าง:\n65,160,หญิง,35"
+            "ส่งข้อมูลแบบนี้นะ 😊\n\nน้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ\n\nตัวอย่าง:\n65,160,หญิง,35,เบา"
         )
         return {"status": "ok"}
 
     parts = user_text.split(",")
 
-    if len(parts) == 4:
+    if len(parts) == 5:
         try:
             weight = float(parts[0].strip())
             height = float(parts[1].strip())
             sex = parts[2].strip()
             age = int(parts[3].strip())
+            activity_level = part[4].strip()
 
-            target_calories = calculate_target_calories(weight, height, sex, age)
+            target_calories = calculate_target_calories(weight, height, sex, age, activity_level)
 
             supabase.table("user_profiles").upsert(
                 {
@@ -93,6 +108,7 @@ async def webhook(request: Request):
                     "height": height,
                     "sex": sex,
                     "age": age,
+                    "activity_level":activity_level,
                     "target_calories": target_calories
                 },
                 on_conflict="user_id"
@@ -108,7 +124,7 @@ async def webhook(request: Request):
             print("PROFILE ERROR:", e)
             reply_line(
                 reply_token,
-                "รูปแบบข้อมูลยังไม่ถูกต้องนะ 😊\n\nลองส่งแบบนี้:\n65,160,หญิง,35"
+                "รูปแบบข้อมูลยังไม่ถูกต้องนะ 😊\n\nลองส่งแบบนี้:\n65,160,หญิง,35,เบา"
             )
 
             return {"status": "ok"}
