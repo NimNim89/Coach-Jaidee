@@ -240,6 +240,14 @@ async def webhook(request: Request):
     except Exception as e:
         print("SUPABASE ERROR:", e)
 
+    today_start = datetime.now(timezone.utc).replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0
+         ).isoformat()
+            
+
     response = supabase.table("food_logs") \
         .select("calories") \
         .eq("user_id", user_id) \
