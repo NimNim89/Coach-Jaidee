@@ -99,7 +99,7 @@ async def webhook(request: Request):
     if user_text == "ตั้งโปรไฟล์":
         reply_line(
             reply_token,
-            "ส่งข้อมูลแบบนี้นะ 😊\n\n"
+            "กรุณาส่งข้อมูลในรูปแบบ 😊\n\n"
             "น้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ,ระดับกิจกรรม,เป้าหมายน้ำหนัก:\n"
             "ระดับกิจกรรม:\n"
             "- เบา (นั่งทำงานเป็นส่วนใหญ่)\n"
@@ -127,6 +127,18 @@ async def webhook(request: Request):
             goal = parts[5].strip()
 
             target_calories = calculate_target_calories(weight, height, sex, age, activity_level, goal)
+            bmi = round(weight / ((height / 100) ** 2), 1)
+
+            if bmi < 18.5:
+                bmi_text = "น้ำหนักน้อย"
+            elif bmi < 23:
+                bmi_text = "ปกติ"
+            elif bmi < 25:
+                bmi_text = "น้ำหนักเกิน"
+            elif bmi < 30:
+                bmi_text = "อ้วนระดับ 1"
+            else:
+                bmi_text = "อ้วนระดับ 2"
 
             supabase.table("user_profiles").upsert(
                 {
@@ -144,7 +156,10 @@ async def webhook(request: Request):
 
             reply_line(
                 reply_token,
-                f"ตั้งโปรไฟล์เรียบร้อยแล้ว 🎯\n\nเป้าหมายน้ำหนัก: {goal}\nแคลอรีเป้าหมาย: {target_calories} kcal/วัน"
+                f"ตั้งโปรไฟล์เรียบร้อยแล้ว 🎯\n\n"
+                f"เป้าหมายน้ำหนัก: {goal}\n"
+                f"🔥 พลังงานเป้าหมาย: {target_calories} kcal/วัน\n"
+                f"📊 BMI: {bmi} ({bmi_text})"
             )
             return {"status": "ok"}
 
