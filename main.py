@@ -41,7 +41,7 @@ def reply_line(reply_token, text):
         json=body
     )
 
-def calculate_target_calories(weight, height, sex, age, activity_level):
+def calculate_target_calories(weight, height, sex, age, activity_level, goal):
     if sex == "ชาย":
         bmr = 10 * weight + 6.25 * height - 5 * age + 5
     else:
@@ -53,16 +53,29 @@ def calculate_target_calories(weight, height, sex, age, activity_level):
         "หนัก": 1.55,
         "มาก": 1.725
     }
+     tdee = bmr * activity_map.get(activity_level, 1.2)
 
-    tdee = bmr * activity_map.get(activity_level, 1.2)
-    target = int(tdee - 300)
+     if goal == "ลด":
+         if age < 18:
+             target = int(tdee)
+         elif age >= 65:
+             target = int(tdee - 100)
+         else:
+             target = int(tdee - 300)
 
-    if sex == "ชาย" and target < 1500:
-        target = 1500
-    elif sex != "ชาย" and target < 1200:
-        target = 1200
-    
-    return target
+     elif goal == "เพิ่ม":
+         target = int(tdee + 300)
+
+     else:  # คง
+         target = int(tdee)
+
+     if sex == "ชาย" and target < 1500:
+         target = 1500
+     elif sex != "ชาย" and target < 1200:
+         target = 1200
+
+     return target
+
 
 @app.post("/webhook")
 async def webhook(request: Request):
@@ -86,29 +99,34 @@ async def webhook(request: Request):
         reply_line(
             reply_token,
             "ส่งข้อมูลแบบนี้นะ 😊\n\n"
-            "น้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ,ระดับกิจกรรม\n\n"
+            "น้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ,ระดับกิจกรรม,เป้าหมายน้ำหนัก\n\n"
             "ระดับกิจกรรม:\n"
             "- เบา (นั่งทำงานเป็นส่วนใหญ่)\n"
             "- กลาง (ออกกำลังกาย 1-3 วัน/สัปดาห์)\n"
             "- หนัก (ออกกำลังกาย 4-6 วัน/สัปดาห์)\n"
             "- มาก (ใช้แรงงานหรือซ้อมหนักทุกวัน)\n\n"
+            "เป้าหมาย:\n"
+            "- ลด\n"
+            "- คง\n"
+            "- เพิ่ม\n\n"
             "ตัวอย่าง:\n"
-            "65,160,หญิง,35,เบา"
-           
-        )
+            "65,160,หญิง,35,เบา,ลด”
+          )
+
         return {"status": "ok"}
 
     parts = user_text.split(",")
 
-    if len(parts) == 5:
+    if len(parts) == 6:
         try:
             weight = float(parts[0].strip())
             height = float(parts[1].strip())
             sex = parts[2].strip()
             age = int(parts[3].strip())
             activity_level = parts[4].strip()
+            goal = parts[5].strip()
 
-            target_calories = calculate_target_calories(weight, height, sex, age, activity_level)
+            target_calories = calculate_target_calories(weight, height, sex, age, activity_level, goal)
 
             supabase.table("user_profiles").upsert(
                 {
@@ -118,6 +136,7 @@ async def webhook(request: Request):
                     "sex": sex,
                     "age": age,
                     "activity_level": activity_level,
+                    "goal": goal,
                     "target_calories": target_calories
                 },
                 on_conflict="user_id"
