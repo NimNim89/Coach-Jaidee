@@ -53,9 +53,10 @@ def calculate_target_calories(weight, height, sex, age, activity_level, goal):
         "หนัก": 1.55,
         "มาก": 1.725
     }
-     tdee = bmr * activity_map.get(activity_level, 1.2)
 
-     if goal == "ลด":
+    tdee = bmr * activity_map.get(activity_level, 1.2)
+
+    if goal == "ลด":
          if age < 18:
              target = int(tdee)
          elif age >= 65:
@@ -63,15 +64,15 @@ def calculate_target_calories(weight, height, sex, age, activity_level, goal):
          else:
              target = int(tdee - 300)
 
-     elif goal == "เพิ่ม":
+    elif goal == "เพิ่ม":
          target = int(tdee + 300)
 
-     else:  # คง
+    else:  # คง
          target = int(tdee)
 
-     if sex == "ชาย" and target < 1500:
+    if sex == "ชาย" and target < 1500:
          target = 1500
-     elif sex != "ชาย" and target < 1200:
+    elif sex != "ชาย" and target < 1200:
          target = 1200
 
      return target
@@ -112,8 +113,7 @@ async def webhook(request: Request):
             "ตัวอย่าง:\n"
             "65,160,หญิง,35,เบา,ลด”
           )
-
-        return {"status": "ok"}
+          return {"status": "ok"}
 
     parts = user_text.split(",")
 
