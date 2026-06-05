@@ -97,7 +97,7 @@ async def webhook(request: Request):
             height = float(parts[1].strip())
             sex = parts[2].strip()
             age = int(parts[3].strip())
-            activity_level = part[4].strip()
+            activity_level = parts[4].strip()
 
             target_calories = calculate_target_calories(weight, height, sex, age, activity_level)
 
