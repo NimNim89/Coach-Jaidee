@@ -75,7 +75,7 @@ def calculate_target_calories(weight, height, sex, age, activity_level, goal):
     elif sex != "ชาย" and target < 1200:
          target = 1200
 
-     return target
+    return target
 
 
 @app.post("/webhook")
@@ -100,7 +100,7 @@ async def webhook(request: Request):
         reply_line(
             reply_token,
             "ส่งข้อมูลแบบนี้นะ 😊\n\n"
-            "น้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ,ระดับกิจกรรม,เป้าหมายน้ำหนัก\n\n"
+            "น้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ,ระดับกิจกรรม,เป้าหมาย\n\n"
             "ระดับกิจกรรม:\n"
             "- เบา (นั่งทำงานเป็นส่วนใหญ่)\n"
             "- กลาง (ออกกำลังกาย 1-3 วัน/สัปดาห์)\n"
@@ -111,9 +111,9 @@ async def webhook(request: Request):
             "- คง\n"
             "- เพิ่ม\n\n"
             "ตัวอย่าง:\n"
-            "65,160,หญิง,35,เบา,ลด”
-          )
-          return {"status": "ok"}
+            "65,160,หญิง,35,เบา,ลด"
+           )
+        return {"status": "ok"}
 
     parts = user_text.split(",")
 
