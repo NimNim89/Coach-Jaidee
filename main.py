@@ -86,14 +86,17 @@ async def webhook(request: Request):
 
             target_calories = calculate_target_calories(weight, height, sex, age)
 
-            supabase.table("user_profiles").upsert({
-                "user_id": user_id,
-                "weight": weight,
-                "height": height,
-                "sex": sex,
-                "age": age,
-                "target_calories": target_calories
-            }).execute()
+            supabase.table("user_profiles").upsert(
+                {
+                    "user_id": user_id,
+                    "weight": weight,
+                    "height": height,
+                    "sex": sex,
+                    "age": age,
+                    "target_calories": target_calories
+                },
+                on_conflict="user_id"
+             ).execute()
 
             reply_line(
                 reply_token,
