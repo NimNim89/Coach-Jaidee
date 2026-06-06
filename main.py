@@ -251,12 +251,19 @@ async def webhook(request: Request):
     response = supabase.table("food_logs") \
         .select("calories") \
         .eq("user_id", user_id) \
+        .gte("created_at", today_start) \
         .execute()
 
     logs = response.data or []
     total = sum(int(item["calories"]) for item in logs)
+    
+    profile = supabase.table("user_profiles") \
+        .select("target_calories") \
+        .eq("user_id", user_id) \
+        .single() \
+        .execute()
 
-    target = 1500
+    target = profile.data["target_calories"]
     remaining = target - total
 
     reply_text = (
