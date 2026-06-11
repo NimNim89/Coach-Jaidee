@@ -190,7 +190,7 @@ async def webhook(request: Request):
 
         logs = response.data or []
 
-        total = sum(int(item["calories"]) for item in logs)
+        total = sum(int(item["calories"]) for item in logs) + int(result["calories"])
         total_protein = sum(int(item["protein"]) for item in logs)
         total_carbs = sum(int(item["carbs"]) for item in logs)
         total_fat = sum(int(item["fat"]) for item in logs)
