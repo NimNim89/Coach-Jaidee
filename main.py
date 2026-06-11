@@ -96,6 +96,29 @@ async def webhook(request: Request):
     user_text = event["message"]["text"].strip()
     reply_token = event["replyToken"]
 
+    if user_text == "โปรไฟล์":
+        profile = supabase.table("user_profiles") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .single() \
+            .execute()
+
+        data = profile.data
+
+        reply_line(
+            reply_token,
+            f"👤 โปรไฟล์ของคุณ\n\n"
+            f"น้ำหนัก: {data['weight']} kg\n"
+            f"ส่วนสูง: {data['height']} cm\n"
+            f"เพศ: {data['sex']}\n"
+            f"อายุ: {data['age']} ปี\n"
+            f"กิจกรรม: {data['activity_level']}\n"
+            f"เป้าหมายน้ำหนัก: {data['goal']}\n\n"
+            f"🔥 พลังงานเป้าหมาย: {data['target_calories']} kcal/วัน"
+        )
+
+        return {"status": "ok"}
+
     if user_text == "ตั้งโปรไฟล์":
         reply_line(
             reply_token,
