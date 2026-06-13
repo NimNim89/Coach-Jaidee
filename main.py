@@ -374,7 +374,7 @@ async def webhook(request: Request):
         .execute()
 
     logs = response.data or []
-    total = sum(int(item["calories"]) for item in logs)
+    total = sum(int(item["calories"]) for item in logs) + int(result["calories"])
     
     profile = supabase.table("user_profiles") \
         .select("target_calories") \
