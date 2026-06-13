@@ -95,6 +95,40 @@ async def webhook(request: Request):
     user_id = event["source"]["userId"]
     user_text = event["message"]["text"].strip()
     reply_token = event["replyToken"]
+   
+    if user_text == "ลบล่าสุด":
+
+        latest = supabase.table("food_logs") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .order("id", desc=True) \
+            .limit(1) \
+            .execute()
+
+        logs = latest.data or []
+
+        if not logs:
+            reply_line(
+                reply_token,
+                "ยังไม่มีรายการอาหารให้ลบนะ 😊"
+            )
+            return {"status": "ok"}
+
+        food = logs[0]
+
+        supabase.table("food_logs") \
+            .delete() \
+            .eq("id", food["id"]) \
+            .execute()
+
+        reply_line(
+            reply_token,
+            f"🗑 ลบรายการล่าสุดแล้ว\n\n"
+            f"{food['food']}\n"
+            f"{food['calories']} kcal"
+        )
+
+        return {"status": "ok"}
 
     if user_text == "โปรไฟล์":
         profile = supabase.table("user_profiles") \
