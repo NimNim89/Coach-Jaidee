@@ -170,6 +170,27 @@ async def webhook(request: Request):
 
         return {"status": "ok"}
 
+    if user_text == "ล้างวันนี้":
+
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0
+        ).isoformat()
+
+        supabase.table("food_logs") \
+            .delete() \
+            .eq("user_id", user_id) \
+            .gte("created_at", today_start) \
+            .execute()
+
+        reply_line(
+            reply_token,
+            "🗑️ ล้างข้อมูลอาหารวันนี้เรียบร้อยแล้ว"
+        )
+        return {"status": "ok"}
+
     if user_text == "โปรไฟล์":
         profile = supabase.table("user_profiles") \
             .select("*") \
