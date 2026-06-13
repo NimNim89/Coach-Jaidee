@@ -96,6 +96,46 @@ async def webhook(request: Request):
     user_text = event["message"]["text"].strip()
     reply_token = event["replyToken"]
    
+    if user_text == "เป้าหมาย":
+                  
+            today_start = datetime.now(timezone.utc).replace(
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0
+            ).isoformat()
+                
+            response = supabase.table("food_logs") \
+                .select("calories") \
+                .eq("user_id", user_id) \
+                .gte("created_at", today_start) \
+                .execute()
+            
+            logs = response.data or []
+            
+            total = sum(int(item["calories"]) for item in logs)
+            profile = (
+                supabase.table("user_profiles") 
+                .select("target_calories")
+                .eq("user_id", user_id)    
+                .single() 
+                .execute()
+            ) 
+                
+            target = profile.data["target_calories"]
+            
+            remaining = target - total
+            
+            reply_text = (
+                f"🎯 เป้าหมายรายวัน\n\n"
+                f"🔥 เป้าหมาย: {target} kcal\n"
+                f"🍽️ กินแล้ว: {total} kcal\n"
+                f"📉 เหลืออีก: {remaining} kcal"
+            )
+             
+            reply_line(reply_token, reply_text)
+            return {"status": "ok"}
+
     if user_text == "ลบล่าสุด":
 
         latest = supabase.table("food_logs") \
@@ -282,44 +322,6 @@ async def webhook(request: Request):
         reply_line(reply_token, reply_text)
         return {"status": "ok"}
        
-        if user_text == "เป้าหมาย":
-
-            today_start = datetime.now(timezone.utc).replace(
-                hour=0,
-                minute=0,
-                second=0,
-                microsecond=0
-            ).isoformat()
-
-            response = supabase.table("food_logs") \
-                .select("calories") \
-                .eq("user_id", user_id) \
-                .gte("created_at", today_start) \
-                .execute()
-
-            logs = response.data or []
-
-            total = sum(int(item["calories"]) for item in logs)
-
-            profile = supabase.table("user_profiles") \
-                .select("target_calories") \
-                .eq("user_id", user_id) \
-                .single() \
-                .execute()
-
-            target = profile.data["target_calories"]
-
-            remaining = target - total
-
-            reply_text = (
-                f"🎯 เป้าหมายรายวัน\n\n"
-                f"🔥 เป้าหมาย: {target} kcal\n"
-                f"🍽️ กินแล้ว: {total} kcal\n"
-                f"📉 เหลืออีก: {remaining} kcal"
-            )
-
-            reply_line(reply_token, reply_text)
-            return {"status": "ok"}
 
     result = analyze(FoodRequest(food=user_text))
 
