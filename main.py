@@ -351,9 +351,9 @@ async def webhook(request: Request):
             "user_id": user_id,
             "food": result["food"],
             "calories": result["calories"],
-            "protein": result["protein"],
-            "carbs": result["carbs"],
-            "fat": result["fat"]
+            "protein": float(result["protein"]),
+            "carbs": float(result["carbs"]),
+            "fat": float(result["fat"])
         }).execute()
         print("SUPABASE SUCCESS")
     except Exception as e:
