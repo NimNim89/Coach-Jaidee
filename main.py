@@ -96,7 +96,7 @@ async def webhook(request: Request):
     user_text = event["message"]["text"].strip()
     reply_token = event["replyToken"]
    
-    if user_text == "เป้าหมาย":
+    if user_text == "เป้าหมายวันนี้":
                   
             today_start = datetime.now(timezone.utc).replace(
                 hour=0,
