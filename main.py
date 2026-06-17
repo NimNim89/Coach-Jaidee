@@ -135,6 +135,54 @@ async def webhook(request: Request):
              
             reply_line(reply_token, reply_text)
             return {"status": "ok"}
+   
+    if user_text == "เป้าหมายน้ำหนัก":
+
+        profile = supabase.table("user_profiles") \
+            .select("weight,height") \
+            .eq("user_id", user_id) \
+            .single() \
+            .execute()
+
+        if not profile.data:
+            reply_line(
+                reply_token,
+                "กรุณาตั้งโปรไฟล์ก่อน\nตัวอย่าง:\n60,160,หญิง,30,กลาง,ลด"
+            )
+            return {"status": "ok"}
+
+        weight = float(profile.data["weight"])
+        height = float(profile.data["height"])
+
+        height_m = height / 100
+
+        bmi = weight / (height_m ** 2)
+
+        healthy_min = round(18.5 * (height_m ** 2), 1)
+        healthy_max = round(22.9 * (height_m ** 2), 1)
+
+        recommended = round(20 * (height_m ** 2), 1)
+
+        remaining = max(0, round(weight - recommended, 1))
+
+        weeks = round(remaining / 0.5)
+
+        reply_text = (
+            f"🎯 เป้าหมายน้ำหนัก\n\n"
+            f"น้ำหนักปัจจุบัน: {weight:.1f} kg\n\n"
+            f"BMI ปัจจุบัน: {bmi:.1f}\n\n"
+            f"ช่วงน้ำหนักสุขภาพดี:\n"
+            f"{healthy_min:.1f} - {healthy_max:.1f} kg\n\n"
+            f"น้ำหนักที่แนะนำ:\n"
+            f"{recommended:.1f} kg\n\n"
+            f"เหลืออีก:\n"
+            f"{remaining:.1f} kg\n\n"
+            f"หากลด 0.5 kg/สัปดาห์\n"
+            f"คาดว่าใช้เวลา {weeks} สัปดาห์"
+        )
+
+        reply_line(reply_token, reply_text)
+        return {"status": "ok"}
 
     if user_text == "ลบล่าสุด":
 
