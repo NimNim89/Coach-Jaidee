@@ -390,7 +390,31 @@ async def webhook(request: Request):
 
         reply_line(reply_token, reply_text)
         return {"status": "ok"}
-       
+    
+    if user_text.startswith("ชั่งน้ำหนัก"):
+
+        try:
+            weight_text = user_text.replace("ชั่งน้ำหนัก", "").strip()
+            weight_kg = float(weight_text)
+
+            supabase.table("weight_logs").insert({
+                "user_id": user_id,
+                "weight_kg": weight_kg
+            }).execute()
+
+            reply_line(
+                reply_token,
+                f"✅ บันทึกน้ำหนักเรียบร้อย\n\nน้ำหนัก: {weight_kg:.1f} kg"
+            )
+            return {"status": "ok"}
+
+        except Exception as e:
+            print("WEIGHT LOG ERROR:", repr(e))
+            reply_line(
+                reply_token,
+                "กรุณาส่งแบบนี้นะ\nชั่งน้ำหนัก 53.5"
+            )
+            return {"status": "ok"} 
 
     result = analyze(FoodRequest(food=user_text))
 
