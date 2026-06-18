@@ -402,6 +402,9 @@ async def webhook(request: Request):
                 "weight_kg": weight_kg
             }).execute()
 
+            supabase.table("user_profiles").update({
+                "weight": weight_kg
+            }).eq("user_id", user_id).execute()
             reply_line(
                 reply_token,
                 f"✅ บันทึกน้ำหนักเรียบร้อย\n\nน้ำหนัก: {weight_kg:.1f} kg"
