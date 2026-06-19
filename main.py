@@ -208,6 +208,9 @@ async def webhook(request: Request):
             .delete() \
             .eq("id", food["id"]) \
             .execute()
+        supabase.table("user_profiles").update({
+            "weight": weight_kg
+        }).eq("user_id", user_id).execute()
 
         reply_line(
             reply_token,
