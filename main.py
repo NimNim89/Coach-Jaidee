@@ -210,7 +210,7 @@ async def webhook(request: Request):
         elif change > 0:
             trend = f"เพิ่มขึ้น {change:.1f} kg"
         else:
-            trend = "คงที่"           
+            trend = "ไม่เปลี่ยนแปลง"           
 
         height = float(
             supabase.table("user_profiles")
@@ -224,6 +224,9 @@ async def webhook(request: Request):
         height_m = height / 100
         target_weight = round(20 * (height_m ** 2), 1)
         remaining = max(0, round(latest_weight - target_weight, 1))
+        total_to_lose = max(0.1, previous_weight - target_weight)
+        lost_so_far = max(0, previous_weight - latest_weight)
+        progress = min(100, round((lost_so_far / total_to_lose) * 100))
         weeks_left = round(remaining / 0.5)
 
         reply_text = (
@@ -235,6 +238,8 @@ async def webhook(request: Request):
             f"🎯 น้ำหนักเป้าหมาย: {target_weight:.1f} kg\n\n"
             f"เหลืออีก:\n"
             f"{remaining:.1f} kg\n\n"
+            f"ความคืบหน้า:\n"
+            f"{progress}%\n\n"
             f"คาดว่าใช้เวลาอีก:\n"
             f"{weeks_left} สัปดาห์"
         )
