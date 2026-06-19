@@ -184,6 +184,43 @@ async def webhook(request: Request):
         reply_line(reply_token, reply_text)
         return {"status": "ok"}
 
+    if user_text == "สรุปรายสัปดาห์":
+        weights = supabase.table("weight_logs") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .order("created_at", desc=True) \
+            .limit(2) \
+            .execute()
+
+        logs = weights.data or []
+
+        if len(logs) < 2:
+            reply_line(
+                reply_token,
+                "ยังมีข้อมูลน้ำหนักไม่พอ\nกรุณาชั่งน้ำหนักอย่างน้อย 2 ครั้ง"
+            )
+            return {"status": "ok"}
+        latest_weight = float(logs[0]["weight_kg"])
+        previous_weight = float(logs[1]["weight_kg"])
+
+        change = latest_weight - previous_weight
+
+        if change < 0:
+            trend = f"ลดลง {abs(change):.1f} kg 🎉"
+        elif change > 0:
+            trend = f"เพิ่มขึ้น {change:.1f} kg"
+        else:
+            trend = "คงที่"           
+        reply_text = (
+            f"📊 สรุปรายสัปดาห์\n\n"
+            f"น้ำหนักก่อนหน้า: {previous_weight:.1f} kg\n"
+            f"น้ำหนักล่าสุด: {latest_weight:.1f} kg\n\n"
+            f"การเปลี่ยนแปลง: {trend}"
+        )
+
+        reply_line(reply_token, reply_text)
+        return {"status": "ok"}
+
     if user_text == "ลบล่าสุด":
 
         latest = supabase.table("food_logs") \
@@ -208,9 +245,6 @@ async def webhook(request: Request):
             .delete() \
             .eq("id", food["id"]) \
             .execute()
-        supabase.table("user_profiles").update({
-            "weight": weight_kg
-        }).eq("user_id", user_id).execute()
 
         reply_line(
             reply_token,
