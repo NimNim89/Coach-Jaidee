@@ -377,7 +377,8 @@ async def webhook(request: Request):
                     "age": age,
                     "activity_level": activity_level,
                     "goal": goal,
-                    "target_calories": target_calories
+                    "target_calories": target_calories,
+                    "awaiting_favorite_foods": True
                 },
                 on_conflict="user_id"
              ).execute()
@@ -387,7 +388,11 @@ async def webhook(request: Request):
                 f"ตั้งโปรไฟล์เรียบร้อยแล้ว 🎯\n\n"
                 f"เป้าหมายน้ำหนัก: {goal}\n"
                 f"🔥 พลังงานเป้าหมาย: {target_calories} kcal/วัน\n"
-                f"📊 BMI: {bmi} ({bmi_text})"
+                f"📊 BMI: {bmi} ({bmi_text})\n\n"
+                f"😊 เพื่อให้โค้ชใจดีแนะนำอาหารได้ตรงใจมากขึ้น\n\n"
+                f"ช่วยบอกอาหารที่คุณชอบกินบ่อย 5-10 อย่าง\n\n"
+                f"ตัวอย่าง:\n"
+                f"ข้าวมันไก่ทอด, ชาไทย, หมูกรอบ, ส้มตำ, ก๋วยเตี๋ยวเรือ"
             )
             return {"status": "ok"}
 
@@ -479,7 +484,25 @@ async def webhook(request: Request):
                 reply_token,
                 "กรุณาส่งแบบนี้นะ\nชั่งน้ำหนัก 53.5"
             )
-            return {"status": "ok"} 
+            return {"status": "ok"}
+    profile_state = supabase.table("user_profiles") \
+        .select("awaiting_favorite_foods") \
+        .eq("user_id", user_id) \
+        .single() \
+        .execute()
+
+    if profile_state.data and profile_state.data.get("awaiting_favorite_foods") == True:
+        supabase.table("user_profiles").update({
+            "favorite_foods": user_text,
+            "awaiting_favorite_foods": False
+        }).eq("user_id", user_id).execute()
+
+        reply_line(
+            reply_token,
+            "🍽️ โค้ชใจดีจำสไตล์การกินของคุณแล้ว\n\n"
+            "ต่อไปโค้ชจะแนะนำอาหารให้เข้ากับของที่คุณชอบมากขึ้น 😊"
+    )
+    return {"status": "ok"} 
 
     result = analyze(FoodRequest(food=user_text))
 
