@@ -96,6 +96,110 @@ async def webhook(request: Request):
     user_text = event["message"]["text"].strip()
     reply_token = event["replyToken"]
    
+    if user_text == "ตั้งโปรไฟล์":
+        reply_line(
+            reply_token,
+            "กรุณาส่งข้อมูลในรูปแบบ 😊\n\n"
+            "น้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ,ระดับกิจกรรม,เป้าหมายน้ำหนัก:\n"
+            "ระดับกิจกรรม:\n"
+            "- เบา (นั่งทำงานเป็นส่วนใหญ่)\n"
+            "- กลาง (ออกกำลังกาย 1-3 วัน/สัปดาห์)\n"
+            "- หนัก (ออกกำลังกาย 4-6 วัน/สัปดาห์)\n"
+            "- มาก (ใช้แรงงานหรือซ้อมหนักทุกวัน)\n\n"
+            "เป้าหมายน้ำหนัก:\n"
+            "- ลด\n"
+            "- คง\n"
+            "- เพิ่ม\n\n"
+            "ตัวอย่าง:\n"
+            "65,160,หญิง,35,เบา,ลด"
+           )
+        return {"status": "ok"}
+                 
+    parts = user_text.split(",")
+    if len(parts) == 6:
+        try:
+            weight = float(parts[0].strip())
+            height = float(parts[1].strip())
+            sex = parts[2].strip()
+            age = int(parts[3].strip())
+            activity_level = parts[4].strip()
+            goal = parts[5].strip()
+                
+            target_calories = calculate_target_calories(weight, height, sex, age, activity_level, goal)
+            bmi = round(weight / ((height / 100) ** 2), 1)
+            
+            if bmi < 18.5:  
+                bmi_text = "น้ำหนักน้อย"
+            elif bmi < 23:
+                bmi_text = "ปกติ"
+            elif bmi < 25:
+                bmi_text = "น้ำหนักเกิน"
+            elif bmi < 30:
+                bmi_text = "อ้วนระดับ 1"
+            else:
+                bmi_text = "อ้วนระดับ 2"
+            
+            supabase.table("user_profiles").upsert(
+                {
+                    "user_id": user_id,
+                    "weight": weight,
+                    "height": height,
+                    "sex": sex,
+                    "age": age,
+                    "activity_level": activity_level,
+                    "goal": goal,
+                    "target_calories": target_calories,
+                    "awaiting_favorite_foods": True
+                },
+                on_conflict="user_id"
+             ).execute()
+            
+            reply_line(     
+                reply_token,
+                f"ตั้งโปรไฟล์เรียบร้อยแล้ว 🎯\n\n"
+                f"เป้าหมายน้ำหนัก: {goal}\n"
+                f"🔥 พลังงานเป้าหมาย: {target_calories} kcal/วัน\n"
+                f"📊 BMI: {bmi} ({bmi_text})\n\n"
+                f"😊 เพื่อให้โค้ชใจดีแนะนำอาหารได้ตรงใจมากขึ้น\n\n"
+                f"ช่วยบอกอาหารที่คุณชอบกินบ่อย 5-10 อย่าง\n\n"
+                f"ตัวอย่าง:\n"
+                f"ข้าวมันไก่ทอด, ชาไทย, หมูกรอบ, ส้มตำ, ก๋วยเตี๋ยวเรือ"
+            )
+            return {"status": "ok"} 
+            
+        except Exception as e:
+            print("PROFILE ERROR:", repr(e))
+                    
+            reply_line(
+                reply_token,   
+                f"ERROR:\n{e}"
+            )
+                    
+            return {"status": "ok"}
+
+    if user_text == "โปรไฟล์":
+        profile = supabase.table("user_profiles") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .single() \
+            .execute()
+        
+        data = profile.data
+            
+        reply_line(
+            reply_token,
+            f"👤 โปรไฟล์ของคุณ\n\n"
+            f"น้ำหนัก: {data['weight']} kg\n"
+            f"ส่วนสูง: {data['height']} cm\n"
+            f"เพศ: {data['sex']}\n"
+            f"อายุ: {data['age']} ปี\n"
+            f"กิจกรรม: {data['activity_level']}\n"
+            f"เป้าหมายน้ำหนัก: {data['goal']}\n\n"
+            f"🔥 พลังงานเป้าหมาย: {data['target_calories']} kcal/วัน"
+        )
+            
+        return {"status": "ok"}
+
     if user_text == "เป้าหมายวันนี้":
                   
             today_start = datetime.now(timezone.utc).replace(
@@ -183,6 +287,57 @@ async def webhook(request: Request):
 
         reply_line(reply_token, reply_text)
         return {"status": "ok"}
+
+    if user_text == "สรุปวันนี้":
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0
+         ).isoformat()
+            
+        
+        response = supabase.table("food_logs") \
+            .select("food, calories, protein, carbs, fat, created_at") \
+            .eq("user_id", user_id) \
+            .gte("created_at", today_start) \
+            .execute()
+            
+        logs = response.data or []
+            
+        total = sum(int(item["calories"]) for item in logs)
+        total_protein = sum(int(item["protein"]) for item in logs)
+        total_carbs = sum(int(item["carbs"]) for item in logs)
+        total_fat = sum(int(item["fat"]) for item in logs)
+        
+        profile = supabase.table("user_profiles") \
+            .select("target_calories") \
+            .eq("user_id", user_id) \
+            .single() \
+            .execute()
+        
+        target = profile.data["target_calories"]
+        remaining = target - total
+        
+        food_list = "\n".join(
+            [f"- {item['food']} {item['calories']} kcal" for item in logs]
+        )
+            
+        if not food_list:
+            food_list = "ยังไม่มีรายการอาหารวันนี้"
+            reply_text = (
+            f"สรุปวันนี้ 🍱\n"
+            f"{food_list}\n\n"
+            f"รวม {total} kcal\n" 
+            f"โปรตีน {total_protein} g\n"
+            f"คาร์บ {total_carbs} g\n"
+            f"ไขมัน {total_fat} g\n\n"
+            f"เหลืออีกประมาณ {remaining} kcal\n"
+            f"จากเป้าหมาย {target} kcal"
+        )
+        
+        reply_line(reply_token, reply_text)
+        return {"status": "ok"}         
 
     if user_text == "สรุปรายสัปดาห์":
         weights = supabase.table("weight_logs") \
@@ -300,163 +455,6 @@ async def webhook(request: Request):
             "🗑️ ล้างข้อมูลอาหารวันนี้เรียบร้อยแล้ว"
         )
         return {"status": "ok"}
-
-    if user_text == "โปรไฟล์":
-        profile = supabase.table("user_profiles") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .single() \
-            .execute()
-
-        data = profile.data
-
-        reply_line(
-            reply_token,
-            f"👤 โปรไฟล์ของคุณ\n\n"
-            f"น้ำหนัก: {data['weight']} kg\n"
-            f"ส่วนสูง: {data['height']} cm\n"
-            f"เพศ: {data['sex']}\n"
-            f"อายุ: {data['age']} ปี\n"
-            f"กิจกรรม: {data['activity_level']}\n"
-            f"เป้าหมายน้ำหนัก: {data['goal']}\n\n"
-            f"🔥 พลังงานเป้าหมาย: {data['target_calories']} kcal/วัน"
-        )
-
-        return {"status": "ok"}
-
-    if user_text == "ตั้งโปรไฟล์":
-        reply_line(
-            reply_token,
-            "กรุณาส่งข้อมูลในรูปแบบ 😊\n\n"
-            "น้ำหนัก,ส่วนสูง,เพศตามใบเกิด,อายุ,ระดับกิจกรรม,เป้าหมายน้ำหนัก:\n"
-            "ระดับกิจกรรม:\n"
-            "- เบา (นั่งทำงานเป็นส่วนใหญ่)\n"
-            "- กลาง (ออกกำลังกาย 1-3 วัน/สัปดาห์)\n"
-            "- หนัก (ออกกำลังกาย 4-6 วัน/สัปดาห์)\n"
-            "- มาก (ใช้แรงงานหรือซ้อมหนักทุกวัน)\n\n"
-            "เป้าหมายน้ำหนัก:\n"
-            "- ลด\n"
-            "- คง\n"
-            "- เพิ่ม\n\n"
-            "ตัวอย่าง:\n"
-            "65,160,หญิง,35,เบา,ลด"
-           )
-        return {"status": "ok"}
-
-    parts = user_text.split(",")
-
-    if len(parts) == 6:
-        try:
-            weight = float(parts[0].strip())
-            height = float(parts[1].strip())
-            sex = parts[2].strip()
-            age = int(parts[3].strip())
-            activity_level = parts[4].strip()
-            goal = parts[5].strip()
-
-            target_calories = calculate_target_calories(weight, height, sex, age, activity_level, goal)
-            bmi = round(weight / ((height / 100) ** 2), 1)
-
-            if bmi < 18.5:
-                bmi_text = "น้ำหนักน้อย"
-            elif bmi < 23:
-                bmi_text = "ปกติ"
-            elif bmi < 25:
-                bmi_text = "น้ำหนักเกิน"
-            elif bmi < 30:
-                bmi_text = "อ้วนระดับ 1"
-            else:
-                bmi_text = "อ้วนระดับ 2"
-
-            supabase.table("user_profiles").upsert(
-                {
-                    "user_id": user_id,
-                    "weight": weight,
-                    "height": height,
-                    "sex": sex,
-                    "age": age,
-                    "activity_level": activity_level,
-                    "goal": goal,
-                    "target_calories": target_calories,
-                    "awaiting_favorite_foods": True
-                },
-                on_conflict="user_id"
-             ).execute()
-
-            reply_line(
-                reply_token,
-                f"ตั้งโปรไฟล์เรียบร้อยแล้ว 🎯\n\n"
-                f"เป้าหมายน้ำหนัก: {goal}\n"
-                f"🔥 พลังงานเป้าหมาย: {target_calories} kcal/วัน\n"
-                f"📊 BMI: {bmi} ({bmi_text})\n\n"
-                f"😊 เพื่อให้โค้ชใจดีแนะนำอาหารได้ตรงใจมากขึ้น\n\n"
-                f"ช่วยบอกอาหารที่คุณชอบกินบ่อย 5-10 อย่าง\n\n"
-                f"ตัวอย่าง:\n"
-                f"ข้าวมันไก่ทอด, ชาไทย, หมูกรอบ, ส้มตำ, ก๋วยเตี๋ยวเรือ"
-            )
-            return {"status": "ok"}
-
-        except Exception as e:
-            print("PROFILE ERROR:", repr(e))
-            
-            reply_line(
-                reply_token,
-                f"ERROR:\n{e}"
-            )
-
-            return {"status": "ok"}
-
-    if user_text == "สรุปวันนี้":
-        today_start = datetime.now(timezone.utc).replace(
-            hour=0,
-            minute=0,
-            second=0,
-            microsecond=0
-         ).isoformat()
-
-
-        response = supabase.table("food_logs") \
-            .select("food, calories, protein, carbs, fat, created_at") \
-            .eq("user_id", user_id) \
-            .gte("created_at", today_start) \
-            .execute()
-
-        logs = response.data or []
-
-        total = sum(int(item["calories"]) for item in logs)
-        total_protein = sum(int(item["protein"]) for item in logs)
-        total_carbs = sum(int(item["carbs"]) for item in logs)
-        total_fat = sum(int(item["fat"]) for item in logs)
-
-        profile = supabase.table("user_profiles") \
-            .select("target_calories") \
-            .eq("user_id", user_id) \
-            .single() \
-            .execute()
-
-        target = profile.data["target_calories"]
-        remaining = target - total
-
-        food_list = "\n".join(
-            [f"- {item['food']} {item['calories']} kcal" for item in logs]
-        )
-
-        if not food_list:
-            food_list = "ยังไม่มีรายการอาหารวันนี้"
-
-        reply_text = (
-            f"สรุปวันนี้ 🍱\n"
-            f"{food_list}\n\n"
-            f"รวม {total} kcal\n"
-            f"โปรตีน {total_protein} g\n"
-            f"คาร์บ {total_carbs} g\n"
-            f"ไขมัน {total_fat} g\n\n"
-            f"เหลืออีกประมาณ {remaining} kcal\n"
-            f"จากเป้าหมาย {target} kcal"
-        )
-
-        reply_line(reply_token, reply_text)
-        return {"status": "ok"}
     
     if user_text.startswith("ชั่งน้ำหนัก"):
 
@@ -485,6 +483,7 @@ async def webhook(request: Request):
                 "กรุณาส่งแบบนี้นะ\nชั่งน้ำหนัก 53.5"
             )
             return {"status": "ok"}
+
     profile_state = supabase.table("user_profiles") \
         .select("awaiting_favorite_foods") \
         .eq("user_id", user_id) \
